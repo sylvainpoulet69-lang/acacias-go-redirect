@@ -1,0 +1,12 @@
+{
+  "routes": [
+    {
+      "src": "/api/go",
+      "dest": "/api/go.js"
+    },
+    {
+      "src": "^/$",
+      "dest": "/api/go"
+    }
+  ]
+}
