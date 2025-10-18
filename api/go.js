@@ -1,34 +1,41 @@
-// /api/go.js
+// api/go.js
 export default async function handler(req, res) {
   try {
-    // 👉 Ton /exec actuel (tu pourras le passer en variable d'environnement plus tard)
-    const WEBAPP = "https://script.google.com/macros/s/AKfycbzPGq0nmNH6Xj_c8bqNTZvB5uO00wUcKoTBOjL7Kw7Dhbe-8KTzVpKDBqKmGpfxe547/exec";
-
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const go = url.searchParams.get("go") || "";
-
-    if (!WEBAPP || !/^https?:\/\//i.test(WEBAPP)) {
-      return res.status(500).send("WEBAPP_EXEC_URL non configurée ou invalide");
+    // 1) Source unique de vérité : variable d'environnement
+    const WEBAPP = process.env.WEBAPP_EXEC_URL;
+    if (!WEBAPP) {
+      return res.status(500).json({ error: "WEBAPP_EXEC_URL not set" });
     }
-    if (!go) return res.status(400).send("Paramètre go manquant");
 
-    // Formats acceptés :
-    //  - "PID"              → dashboard ?pid=PID
-    //  - "PID:EVENT_ID"     → évènement ?event_id=EVENT_ID&pid=PID
-    const [pid, eventId] = go.split(":");
+    // 2) Format attendu: /api/go?go=PID:EVENT_ID  (ex: P001:N3-2025-10-20-20h)
+    const raw = (req.query.go || "").toString();
+    const [pid, event_id] = raw.split(":");
 
-    if (pid && !eventId) {
-      const target = `${WEBAPP}?pid=${encodeURIComponent(pid)}`;
-      res.setHeader("Location", target);
-      return res.status(302).end();
+    // 3) Mode debug (ne redirige pas, affiche la cible)
+    if (req.query.debug === "1") {
+      return res.status(200).json({
+        ok: true,
+        raw,
+        pid,
+        event_id,
+        target: event_id
+          ? `${WEBAPP}?event_id=${encodeURIComponent(event_id)}&pid=${encodeURIComponent(pid || "")}`
+          : pid
+          ? `${WEBAPP}?pid=${encodeURIComponent(pid)}`
+          : WEBAPP
+      });
     }
-    if (pid && eventId) {
-      const target = `${WEBAPP}?event_id=${encodeURIComponent(eventId)}&pid=${encodeURIComponent(pid)}`;
-      res.setHeader("Location", target);
-      return res.status(302).end();
-    }
-    return res.status(400).send("Format go invalide");
+
+    // 4) Redirection
+    const target = event_id
+      ? `${WEBAPP}?event_id=${encodeURIComponent(event_id)}&pid=${encodeURIComponent(pid || "")}`
+      : pid
+      ? `${WEBAPP}?pid=${encodeURIComponent(pid)}`
+      : WEBAPP;
+
+    res.writeHead(302, { Location: target });
+    res.end();
   } catch (e) {
-    return res.status(500).send("Erreur: " + String(e));
+    res.status(500).json({ error: String(e) });
   }
 }
