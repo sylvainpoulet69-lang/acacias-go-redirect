@@ -2,7 +2,7 @@
 export default async function handler(req, res) {
   try {
     // 👉 Ton /exec actuel (tu pourras le passer en variable d'environnement plus tard)
-    const WEBAPP = "https://script.google.com/macros/s/AKfycbxC8Fk63N3dUX16EAWSZvkyvWwg19l9UaoHvcPTD11AAKnnjClPFmQxkqTbp7EC6wD5/exec";
+    const WEBAPP = "https://script.google.com/macros/s/AKfycbz5x-zGn_5MZeQomhH_nhNoGWTCvhxZvUqZxoOVjHNSQIdqidz2G_Ja5vxEIGSdZI6N/exec";
 
     const url = new URL(req.url, `http://${req.headers.host}`);
     const go = url.searchParams.get("go") || "";
