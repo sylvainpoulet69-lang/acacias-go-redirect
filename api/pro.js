@@ -1,8 +1,7 @@
-// api/pro.js
 const { WEBAPP_URL } = require("./config");
-const url = require("url");
 
 function preserveExtraQuery(req, consumedKeys) {
+  const url = require("url");
   const parsed = url.parse(req.url, true);
   const q = parsed.query || {};
   const out = [];
@@ -27,6 +26,6 @@ module.exports = (req, res) => {
     res.end();
   } catch (e) {
     res.statusCode = 500;
-    res.end("Redirect error (pro.js): " + String(e));
+    res.end("Redirect error: " + String(e));
   }
 };
