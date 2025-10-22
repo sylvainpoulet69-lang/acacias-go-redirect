@@ -1,62 +1,49 @@
-// api/go.js
-const { WEBAPP_URL } = require("./config");
-const url = require("url");
+const { WEBAPP_URL } = require("../config");
 
-function bad(res, code, msg) {
-  res.statusCode = code;
-  res.end(msg);
+function preserveExtraQuery(req, consumedKeys) {
+  const url = require("url");
+  const parsed = url.parse(req.url, true);
+  const q = parsed.query || {};
+  const out = [];
+  for (const [k, v] of Object.entries(q)) {
+    if (consumedKeys.includes(k)) continue;
+    if (v === undefined || v === null || v === "") continue;
+    out.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  }
+  return out.length ? "&" + out.join("&") : "";
 }
 
 module.exports = (req, res) => {
-  if (!WEBAPP_URL || !/^https?:\/\//i.test(WEBAPP_URL)) {
-    return bad(res, 500, "WEBAPP_URL is not set in config.js");
-  }
-
   try {
-    const parsed = url.parse(req.url, true);
-    const raw = (parsed.query && parsed.query.go ? String(parsed.query.go) : "").trim();
-    if (!raw) return bad(res, 400, "Paramètre ?go manquant");
-
-    // on ne re-décode pas deux fois — Vercel te donne déjà la valeur décodée dans parsed.query.go
-    const token = raw;
-
-    // 0) Orga / Pro d'abord
-    if (["PRO", "ORGA", "ADMIN"].includes(token.toUpperCase())) {
-      const dest = `${WEBAPP_URL}?page=pro`;
-      res.statusCode = 307;
-      res.setHeader("Location", dest);
-      return res.end();
+    if (!WEBAPP_URL || !/^https?:\/\//i.test(WEBAPP_URL)) {
+      res.statusCode = 500;
+      return res.end("WEBAPP_URL is not set in config.js");
     }
 
-    // 1) pid:eventId
-    if (token.includes(":")) {
-      const [pid, ev] = token.split(":");
-      if (pid && ev) {
-        const dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(ev)}&pid=${encodeURIComponent(pid)}`;
-        res.statusCode = 307;
-        res.setHeader("Location", dest);
-        return res.end();
-      }
+    const url = require("url");
+    const go = (url.parse(req.url, true).query || {}).go || "";
+
+    let dest;
+    if (go.includes(":")) {
+      // format "PID:EVENTID" → page évènement + pid
+      const [pid, event_id] = go.split(":");
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(event_id)}&pid=${encodeURIComponent(pid)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (/^P/i.test(go)) {
+      // format "PID" → dashboard joueur
+      dest = `${WEBAPP_URL}?page=dashboard&pid=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (go) {
+      // format "EVENTID" → page publique évènement
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else {
+      // fallback : renvoyer vers la racine Apps Script (ou une page d’info)
+      dest = `${WEBAPP_URL}${preserveExtraQuery(req, [])}`;
     }
 
-    // 2) Dashboard joueur (P\d+)
-    if (/^P\d+$/i.test(token)) {
-      const dest = `${WEBAPP_URL}?page=dashboard&pid=${encodeURIComponent(token.toUpperCase())}`;
-      res.statusCode = 307;
-      res.setHeader("Location", dest);
-      return res.end();
-    }
-
-    // 3) Page évènement publique (EV…)
-    if (/^EV/i.test(token)) {
-      const dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(token)}`;
-      res.statusCode = 307;
-      res.setHeader("Location", dest);
-      return res.end();
-    }
-
-    return bad(res, 400, "Token ?go inconnu");
+    res.statusCode = 307; // conserve la méthode
+    res.setHeader("Location", dest);
+    res.end();
   } catch (e) {
-    return bad(res, 500, "Redirect error (go.js): " + String(e));
+    res.statusCode = 500;
+    res.end("go.js error: " + String(e));
   }
 };
