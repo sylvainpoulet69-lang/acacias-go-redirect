@@ -1,6 +1,6 @@
-import { APPSCRIPT_WEBAPP } from "./config.js";
+const { APPSCRIPT_WEBAPP } = require("./config");
 
-export default async function handler(req, res) {
+module.exports = (req, res) => {
   const url = `${APPSCRIPT_WEBAPP}?page=pro`;
   return res.redirect(302, url);
-}
+};
