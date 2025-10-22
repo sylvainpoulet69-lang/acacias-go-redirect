@@ -1,13 +1,24 @@
-# Redirection Vercel → Apps Script
+# Les Acacias – routes pro/orga (Vercel)
 
-## Paramètre attendu
-- `go=PID` → redirige vers `WEBAPP?pid=PID`
-- `go=PID:EVENT_ID` → redirige vers `WEBAPP?event_id=EVENT_ID&pid=PID`
+Ce dossier ajoute des routes propres **/pro, /orga/:event_id, /dashboard/:pid, /event/...**
+qui redirigent (307) vers ta **WebApp Apps Script**.
 
-## Fichiers
-- `api/go.js` — endpoint serverless qui redirige selon le paramètre `go`
-- `vercel.json` — routes (inclut aussi `/?go=...`)
-- `package.json` — optionnel (Node 18+)
+## 1) Configure `config.js`
+Ouvre `config.js` et remplace la valeur de `WEBAPP_URL` par l'URL **/exec** de ta WebApp Apps Script :
 
-## À faire après import dans Vercel
-- (Facultatif mais recommandé) Créer une variable d'environnement `WEBAPP_EXEC_URL` = l'URL `/exec` de votre Apps Script, puis adapter `api/go.js` pour la lire au lieu de la valeur codée en dur.
+```js
+exports.WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+```
+
+## 2) Déploie sur Vercel
+Commit/push sur GitHub → Vercel déploie → Teste :
+- `/pro` → liste pro
+- `/orga/EV123` → page Orga pour l’évènement EV123
+- `/dashboard/P001` → dashboard joueur
+- `/event/EV123` (ou `/event/EV123/P001`) → page publique
+
+> Les paramètres additionnels (ex: `?days=120`) sont préservés par les handlers.
+
+## Notes
+- On **ne touche pas** à votre `/api/go` existant.
+- Si l’accès pro affiche “Accès réservé”, vérifie la feuille **Admin** (email, role=pro, actif=TRUE).
