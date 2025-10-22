@@ -1,30 +1,11 @@
-// CommonJS comme ton projet
-const { WEBAPP_URL } = require("./config");
-
-// recopie du petit helper pour conserver d'autres query params si besoin
-function preserveExtraQuery(req, consumedKeys) {
-  const url = require("url");
-  const parsed = url.parse(req.url, true);
-  const q = parsed.query || {};
-  const out = [];
-  for (const [k, v] of Object.entries(q)) {
-    if (consumedKeys.includes(k)) continue;
-    if (v === undefined || v === null || v === "") continue;
-    out.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
-  }
-  return out.length ? "&" + out.join("&") : "";
-}
+// api/pro.js — version ultra simple, aucun import
+// ⬇️ colle ici l'URL /exec exacte de ta WebApp Apps Script
+const WEBAPP_URL = "https://script.google.com/macros/s/TON_ID/exec";
 
 module.exports = (req, res) => {
-  if (!WEBAPP_URL || !/^https?:\/\//i.test(WEBAPP_URL)) {
-    res.statusCode = 500;
-    res.end("WEBAPP_URL is not set in config.js");
-    return;
-  }
   try {
-    const dest = `${WEBAPP_URL}?page=pro${preserveExtraQuery(req, [])}`;
-    res.statusCode = 307;           // redirection propre
-    res.setHeader("Location", dest);
+    const dest = `${WEBAPP_URL}?page=pro`;
+    res.writeHead(307, { Location: dest });
     res.end();
   } catch (e) {
     res.statusCode = 500;
