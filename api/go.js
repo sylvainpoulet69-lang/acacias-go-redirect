@@ -1,42 +1,49 @@
-// CommonJS
-const { APPSCRIPT_WEBAPP } = require("./config");
+const { WEBAPP_URL } = require("../config");
+
+function preserveExtraQuery(req, consumedKeys) {
+  const url = require("url");
+  const parsed = url.parse(req.url, true);
+  const q = parsed.query || {};
+  const out = [];
+  for (const [k, v] of Object.entries(q)) {
+    if (consumedKeys.includes(k)) continue;
+    if (v === undefined || v === null || v === "") continue;
+    out.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  }
+  return out.length ? "&" + out.join("&") : "";
+}
 
 module.exports = (req, res) => {
   try {
-    const raw = (req.query.go || "").toString();
-    if (!raw) return res.status(400).send("Paramètre ?go manquant");
-
-    const token = decodeURIComponent(raw).trim();
-
-    // 1) pid:eventId  -> /?event_id=EVxxx&pid=Pxxx
-    if (token.includes(":")) {
-      const [pid, ev] = token.split(":");
-      if (pid && ev) {
-        const url = `${APPSCRIPT_WEBAPP}?event_id=${encodeURIComponent(ev)}&pid=${encodeURIComponent(pid)}`;
-        return res.redirect(302, url);
-      }
+    if (!WEBAPP_URL || !/^https?:\/\//i.test(WEBAPP_URL)) {
+      res.statusCode = 500;
+      return res.end("WEBAPP_URL is not set in config.js");
     }
 
-    // 2) P\d+ -> dashboard joueur
-    if (/^P\d+$/i.test(token)) {
-      const url = `${APPSCRIPT_WEBAPP}?page=dashboard&pid=${encodeURIComponent(token.toUpperCase())}`;
-      return res.redirect(302, url);
+    const url = require("url");
+    const go = (url.parse(req.url, true).query || {}).go || "";
+
+    let dest;
+    if (go.includes(":")) {
+      // format "PID:EVENTID" → page évènement + pid
+      const [pid, event_id] = go.split(":");
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(event_id)}&pid=${encodeURIComponent(pid)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (/^P/i.test(go)) {
+      // format "PID" → dashboard joueur
+      dest = `${WEBAPP_URL}?page=dashboard&pid=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (go) {
+      // format "EVENTID" → page publique évènement
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else {
+      // fallback : renvoyer vers la racine Apps Script (ou une page d’info)
+      dest = `${WEBAPP_URL}${preserveExtraQuery(req, [])}`;
     }
 
-    // 3) EV... -> page évènement publique
-    if (/^EV/i.test(token)) {
-      const url = `${APPSCRIPT_WEBAPP}?event_id=${encodeURIComponent(token)}`;
-      return res.redirect(302, url);
-    }
-
-    // Optionnel : mot-clé "PRO" pour l’orga
-    if (token.toUpperCase() === "PRO") {
-      const url = `${APPSCRIPT_WEBAPP}?page=pro`;
-      return res.redirect(302, url);
-    }
-
-    return res.status(400).send("Token ?go inconnu");
+    res.statusCode = 307; // conserve la méthode
+    res.setHeader("Location", dest);
+    res.end();
   } catch (e) {
-    return res.status(500).send("Erreur go.js: " + e);
+    res.statusCode = 500;
+    res.end("go.js error: " + String(e));
   }
 };
