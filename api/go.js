@@ -1,6 +1,7 @@
-import { APPSCRIPT_WEBAPP } from "./config.js";
+// CommonJS
+const { APPSCRIPT_WEBAPP } = require("./config");
 
-export default async function handler(req, res) {
+module.exports = (req, res) => {
   try {
     const raw = (req.query.go || "").toString();
     if (!raw) return res.status(400).send("Paramètre ?go manquant");
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
       return res.redirect(302, url);
     }
 
-    // Optionnel : mot-clé "PRO" pour l’orga (sinon utiliser /api/pro)
+    // Optionnel : mot-clé "PRO" pour l’orga
     if (token.toUpperCase() === "PRO") {
       const url = `${APPSCRIPT_WEBAPP}?page=pro`;
       return res.redirect(302, url);
@@ -38,4 +39,4 @@ export default async function handler(req, res) {
   } catch (e) {
     return res.status(500).send("Erreur go.js: " + e);
   }
-}
+};
