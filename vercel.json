@@ -1,12 +1,28 @@
 {
-  "routes": [
+  "redirects": [
     {
-      "src": "/api/go",
-      "dest": "/api/go.js"
+      "source": "/pro",
+      "destination": "/api/pro"
     },
     {
-      "src": "^/$",
-      "dest": "/api/go"
+      "source": "/pro/(.*)",
+      "destination": "/api/pro?$1"
+    },
+    {
+      "source": "/orga/:event_id",
+      "destination": "/api/orga?event_id=:event_id"
+    },
+    {
+      "source": "/dashboard/:pid",
+      "destination": "/api/dashboard?pid=:pid"
+    },
+    {
+      "source": "/event/:event_id",
+      "destination": "/api/event?event_id=:event_id"
+    },
+    {
+      "source": "/event/:event_id/:pid",
+      "destination": "/api/event?event_id=:event_id&pid=:pid"
     }
   ]
 }
