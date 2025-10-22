@@ -1,34 +1,49 @@
-// /api/go.js
-export default async function handler(req, res) {
-  try {
-    // 👉 Ton /exec actuel (tu pourras le passer en variable d'environnement plus tard)
-    const WEBAPP = "https://script.google.com/macros/s/AKfycbxb2qx0yVmRbsN-oK5vbGC3oNAC0eQ-v0dydMisNNl4OsOQh4bjVVvgxx5KDTY6jCfy/exec";
+const { WEBAPP_URL } = require("../config");
 
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const go = url.searchParams.get("go") || "";
-
-    if (!WEBAPP || !/^https?:\/\//i.test(WEBAPP)) {
-      return res.status(500).send("WEBAPP_EXEC_URL non configurée ou invalide");
-    }
-    if (!go) return res.status(400).send("Paramètre go manquant");
-
-    // Formats acceptés :
-    //  - "PID"              → dashboard ?pid=PID
-    //  - "PID:EVENT_ID"     → évènement ?event_id=EVENT_ID&pid=PID
-    const [pid, eventId] = go.split(":");
-
-    if (pid && !eventId) {
-      const target = `${WEBAPP}?pid=${encodeURIComponent(pid)}`;
-      res.setHeader("Location", target);
-      return res.status(302).end();
-    }
-    if (pid && eventId) {
-      const target = `${WEBAPP}?event_id=${encodeURIComponent(eventId)}&pid=${encodeURIComponent(pid)}`;
-      res.setHeader("Location", target);
-      return res.status(302).end();
-    }
-    return res.status(400).send("Format go invalide");
-  } catch (e) {
-    return res.status(500).send("Erreur: " + String(e));
+function preserveExtraQuery(req, consumedKeys) {
+  const url = require("url");
+  const parsed = url.parse(req.url, true);
+  const q = parsed.query || {};
+  const out = [];
+  for (const [k, v] of Object.entries(q)) {
+    if (consumedKeys.includes(k)) continue;
+    if (v === undefined || v === null || v === "") continue;
+    out.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
   }
+  return out.length ? "&" + out.join("&") : "";
 }
+
+module.exports = (req, res) => {
+  try {
+    if (!WEBAPP_URL || !/^https?:\/\//i.test(WEBAPP_URL)) {
+      res.statusCode = 500;
+      return res.end("WEBAPP_URL is not set in config.js");
+    }
+
+    const url = require("url");
+    const go = (url.parse(req.url, true).query || {}).go || "";
+
+    let dest;
+    if (go.includes(":")) {
+      // format "PID:EVENTID" → page évènement + pid
+      const [pid, event_id] = go.split(":");
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(event_id)}&pid=${encodeURIComponent(pid)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (/^P/i.test(go)) {
+      // format "PID" → dashboard joueur
+      dest = `${WEBAPP_URL}?page=dashboard&pid=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else if (go) {
+      // format "EVENTID" → page publique évènement
+      dest = `${WEBAPP_URL}?event_id=${encodeURIComponent(go)}${preserveExtraQuery(req, ["go"])}`;
+    } else {
+      // fallback : renvoyer vers la racine Apps Script (ou une page d’info)
+      dest = `${WEBAPP_URL}${preserveExtraQuery(req, [])}`;
+    }
+
+    res.statusCode = 307; // conserve la méthode
+    res.setHeader("Location", dest);
+    res.end();
+  } catch (e) {
+    res.statusCode = 500;
+    res.end("go.js error: " + String(e));
+  }
+};
