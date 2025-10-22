@@ -1,8 +1,9 @@
-// api/pro.js
+// CommonJS comme ton projet
 const { WEBAPP_URL } = require("./config");
-const url = require("url");
 
+// recopie du petit helper pour conserver d'autres query params si besoin
 function preserveExtraQuery(req, consumedKeys) {
+  const url = require("url");
   const parsed = url.parse(req.url, true);
   const q = parsed.query || {};
   const out = [];
@@ -22,11 +23,11 @@ module.exports = (req, res) => {
   }
   try {
     const dest = `${WEBAPP_URL}?page=pro${preserveExtraQuery(req, [])}`;
-    res.statusCode = 307;
+    res.statusCode = 307;           // redirection propre
     res.setHeader("Location", dest);
     res.end();
   } catch (e) {
     res.statusCode = 500;
-    res.end("Redirect error (pro.js): " + String(e));
+    res.end("Redirect error: " + String(e));
   }
 };
