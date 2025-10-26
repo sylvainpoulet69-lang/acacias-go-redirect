@@ -1,6 +1,6 @@
 // api/pro.js — version ultra simple, aucun import
 // ⬇️ colle ici l'URL /exec exacte de ta WebApp Apps Script
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxZxs0EBKk4jrCMQcJJkJhg3MozIbBCg30uIZxhc6KIaenkIRd9OYb3vV3BRdQQt9x2/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxfSHwE8_7ebDUAN0x8zEXEj8MlUeMr10FlcuSZ7lkinq4XShT4zPjUClmRxBYEm86D/exec";
 
 module.exports = (req, res) => {
   try {
